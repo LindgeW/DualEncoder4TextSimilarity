@@ -24,6 +24,5 @@ def masked_pred(sent, tokenizer=None, bert_model=None):
 
 if __name__ == '__main__':
     tokenizer, bert_model = load_pretrained_bert('bert/zh_wwm_ext')
-    sent = '小明来自天津大学！'
-    # sent = '他在阿里巴巴实习'
+    sent = '小明来自清华大学！'
     masked_pred(sent, tokenizer, bert_model)

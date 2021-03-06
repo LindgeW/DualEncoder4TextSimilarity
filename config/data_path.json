@@ -1,0 +1,16 @@
+{
+ "pos": {
+    "train": "./data/pos/souti.train",
+    "dev": "./data/pos/souti.dev",
+    "test": "./data/pos/souti.test"
+  },
+  "neg": {
+    "train": "./data/neg/souti_neg.train",
+    "dev": "./data/neg/souti_neg.dev",
+    "test": "./data/neg/souti_neg.test"
+  },
+  "pretrained": {
+    "char_embedding": "./embeddings/giga.100.txt",
+    "bert_model": "./bert/base/"
+  }
+}

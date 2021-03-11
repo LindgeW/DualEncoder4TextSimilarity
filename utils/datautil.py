@@ -146,9 +146,12 @@ def batch_variable(batch_data, mVocab):
 
     query_bert_inp = bert_vocab.batch_bert2id(query_batch)
     doc_bert_inp = bert_vocab.batch_bert2id(doc_batch)
-
+    
+    #pair_bert_inp = bert_vocab.batch_bertpair2id(query_batch, doc_batch)
+    
     return Batch(query_bert_inp=query_bert_inp,
                  doc_bert_inp=doc_bert_inp,
+                 #pair_bert_inp=pair_bert_inp,
                  match_ids=match_ids)
 
 

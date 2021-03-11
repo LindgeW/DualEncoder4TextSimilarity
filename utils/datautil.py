@@ -76,7 +76,15 @@ def dataset_loader(pos_path, neg_path=None, margin=5000):
                 if pl:
                     pitems = pl.strip().split(SEP_A)
                     if len(pitems) > 1:
-                        dataset.append(Instance(pitems[0][:510], pitems[1][:510], 1))
+                        # dataset.append(Instance(pitems[0][:510], pitems[1][:510], 1))
+                        if len(pitems[0]) + len(pitems[1]) <= 509:
+                            dataset.append(Instance(pitems[0], pitems[1], 1))
+                        elif len(pitems[0]) <= 254:
+                            dataset.append(Instance(pitems[0], pitems[1][:(509-len(pitems[0]))], 1))
+                        elif len(pitems[1]) <= 254:
+                            dataset.append(Instance(pitems[0][:(509-len(pitems[1]))], pitems[1], 1))
+                        else:
+                            dataset.append(Instance(pitems[0][:254], pitems[1][:254], 1))
 
                     if neg_reader:
                         nl = next(neg_reader)
@@ -84,7 +92,15 @@ def dataset_loader(pos_path, neg_path=None, margin=5000):
                             break
                         nitems = nl.strip().split(SEP_A)
                         if len(nitems) > 1:
-                            dataset.append(Instance(nitems[0][:510], nitems[1][:510], 0))
+                            # dataset.append(Instance(nitems[0][:510], nitems[1][:510], 0))
+                            if len(nitems[0]) + len(nitems[1]) <= 509:
+                                dataset.append(Instance(nitems[0], nitems[1], 0))
+                            elif len(nitems[0]) <= 254:
+                                dataset.append(Instance(nitems[0], nitems[1][:(509 - len(nitems[0]))], 0))
+                            elif len(nitems[1]) <= 254:
+                                dataset.append(Instance(nitems[0][:(509 - len(nitems[1]))], nitems[1], 0))
+                            else:
+                                dataset.append(Instance(nitems[0][:254], nitems[1][:254], 0))
 
                     if len(dataset) >= margin:
                         yield dataset
@@ -98,6 +114,7 @@ def dataset_loader(pos_path, neg_path=None, margin=5000):
 
     if len(dataset) > 0:
         yield dataset
+
 
 
 def in_batch_dataset_loader(pos_path, margin=20000):

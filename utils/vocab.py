@@ -57,6 +57,51 @@ class BERTVocab(object):
         return bert_ids, segment, bert_mask
 
     @_check_build_bert_vocab
+    def bertpair2id(self, tokens_lst1, tokens_lst2):
+        '''将原始token序列转换成bert bep ids'''
+        def transform(token):
+            return tokenizer.convert_tokens_to_ids(tokenizer.tokenize(token))
+
+        tokenizer = self.bert_tokenizer
+        bpe_tokens1 = [tokenizer.cls_token] + tokens_lst1 + [tokenizer.sep_token]
+        bpe_tokens2 = tokens_lst2 + [tokenizer.sep_token]
+        bpe_tokens = bpe_tokens1 + bpe_tokens2
+        bert_ids = transform(' '.join(bpe_tokens))
+        # bert_ids = tokenizer.encode(tokens_lst1, tokens_lst2, add_special_tokens=True)  # 传入sentence
+        segment = [0] * len(bpe_tokens1) + [1] * len(bpe_tokens2)
+        bert_mask = [1] * len(bpe_tokens)
+        # res = tokenizer(' '.join(tokens_lst1), ' '.join(tokens_lst2))
+        # bert_ids = res['input_ids']
+        # segment = res['token_type_ids']
+        # bert_mask = res['attention_mask']
+        return bert_ids, segment, bert_mask
+
+    @_check_build_bert_vocab
+    def batch_bertpair2id(self, tokens_lst1, tokens_lst2):
+        '''将原始token序列转换成bert bep ids'''
+        bert_ids, segments, bert_masks = [], [], []
+        max_len = 0
+        for lst1, lst2 in zip(tokens_lst1, tokens_lst2):
+            res = self.bert_tokenizer(' '.join(lst1), ' '.join(lst2))
+            token_ids = res['input_ids']
+            segment = res['token_type_ids']
+            bert_mask = res['attention_mask']
+
+            bert_ids.append(token_ids)
+            segments.append(segment)
+            bert_masks.append(bert_mask)
+            if len(token_ids) > max_len:
+                max_len = len(token_ids)
+
+        for i in range(len(bert_ids)):
+            padding = [0] * (max_len - len(bert_ids[i]))
+            bert_ids[i] += padding
+            segments[i] += padding
+            bert_masks[i] += padding
+
+        return torch.LongTensor(bert_ids), torch.LongTensor(segments), torch.BoolTensor(bert_masks)
+    
+    @_check_build_bert_vocab
     def batch_bert2id(self, tokens_lst: list):
         # '''将原始token序列转换成bert bep ids'''
         # def transform(token):

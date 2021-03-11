@@ -11,6 +11,16 @@ def jaccard_dist(s1, s2):
     return jac
 
 
+def jaccard_dist_len_penalty(s1, s2, alpha=0.02):
+    s1_ = set(s1.strip().lower())
+    s2_ = set(s2.strip().lower())
+    inter = s1_ & s2_
+    union = s1_ | s2_
+    len_diff = abs(len(s1.strip()) - len(s2.strip()))  # 增加文本长度惩罚
+    jac = len(inter) / (len(union) + alpha * len_diff)
+    return jac
+
+
 # Jaro [0, 1]
 def jaro_dist(s, t):
     s_len = len(s)

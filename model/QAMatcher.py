@@ -121,6 +121,7 @@ class BertQAMatcher(nn.Module):
         norm_b = embeddings_b / embeddings_b.norm(dim=1)[:, None]
         scores = torch.mm(norm_a, norm_b.transpose(0, 1).contiguous()) * scale  # (B, B)
         labels = torch.tensor(range(len(scores)), dtype=torch.long, device=scores.device)   # Example a[i] should match with b[i]
+        #return label_smoothing_loss(scores, labels, len(labels))
         return F.cross_entropy(scores, labels)
 
     def circle_loss(self, embeddings_a, embeddings_b, margin=0.45, gamma=32):
@@ -142,3 +143,30 @@ class BertQAMatcher(nn.Module):
         pos_loss = torch.sum(torch.exp(-gamma * ((1. + margin - pos_cosine) * (pos_cosine - 1. + margin))), dim=1)
         circle_loss = torch.mean(torch.log(1. + neg_loss * pos_loss))
         return circle_loss
+
+    
+def label_smoothing_loss(pred, target, classes, smoothing=0.1, dim=-1):
+    pred = pred.log_softmax(dim=dim)
+    with torch.no_grad():
+        # true_dist = pred.data.clone()
+        true_dist = torch.zeros_like(pred)
+        true_dist.fill_(smoothing / (classes - 1))
+        true_dist.scatter_(1, target.data.unsqueeze(1), 1.0 - smoothing)
+    return torch.mean(torch.sum(-true_dist * pred, dim=dim))
+
+
+class LabelSmoothingLoss(nn.Module):
+    def __init__(self, classes, smoothing=0.0, dim=-1):
+        super(LabelSmoothingLoss, self).__init__()
+        self.smoothing = smoothing
+        self.cls = classes
+        self.dim = dim
+
+    def forward(self, pred, target):
+        pred = pred.log_softmax(dim=self.dim)
+        with torch.no_grad():
+            # true_dist = pred.data.clone()
+            true_dist = torch.zeros_like(pred)
+            true_dist.fill_(self.smoothing / (self.cls - 1))
+            true_dist.scatter_(1, target.data.unsqueeze(1), 1.0 - self.smoothing)
+        return torch.mean(torch.sum(-true_dist * pred, dim=self.dim))

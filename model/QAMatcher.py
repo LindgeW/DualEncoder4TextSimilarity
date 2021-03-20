@@ -36,21 +36,32 @@ class BertQAMatcher(nn.Module):
         index = x.topk(k, dim=dim)[1].sort(dim=dim)[0]  # values, indices
         return x.gather(dim, index)
 
-    def pooling(self, x):
-        # avg_pool = F.avg_pool1d(x.transpose(1, 2).contiguous(), x.size(1)).squeeze(-1)
-        # max_pool = F.max_pool1d(x.transpose(1, 2).contiguous(), x.size(1)).squeeze(-1)
-        # return torch.cat((avg_pool, max_pool), -1)
+    def kmax_pooling3(self, x, k=1, dim=1):
+        # [N, L, C] -> [N, C*k]
+        x, index = torch.topk(x, k, dim=dim, sorted=False)
+        x = torch.reshape(x, (x.size(0), -1))
+        return x
 
-        # pool = F.max_pool1d(x.transpose(1, 2).contiguous(), x.size(1)).squeeze(-1)
-        pool = F.avg_pool1d(x.transpose(1, 2).contiguous(), x.size(1)).squeeze(-1)
+    def pooling(self, x, mask=None):
+        if mask is None:
+            # pool = F.max_pool1d(x.transpose(1, 2).contiguous(), x.size(1)).squeeze(-1)
+            pool = F.avg_pool1d(x.transpose(1, 2).contiguous(), x.size(1)).squeeze(-1)
+        else:
+            # masked_x = x.masked_fill(~mask.unsqueeze(-1), -1e5)
+            # pool = torch.max(masked_x, dim=1)[0]
+
+            expand_mask = mask.float().unsqueeze(-1)
+            pool = (x * expand_mask).sum(dim=1) / expand_mask.sum(dim=1)
         return pool
 
-    def attn_pooling(self, x):
+    def attn_pooling(self, x, mask=None):
         attn_score = self.attn_fc(x)  # (B, L, 1)
+        if mask is not None:
+            attn_score = attn_score.masked_fill(~mask.unsqueeze(-1), -1e9)
         attn_w = F.softmax(attn_score, dim=1)
         out = torch.sum(attn_w * x, dim=1)  # (B, D)
         return out
-
+    
     def bert_params(self):
         return self.bert.bert.parameters()
 
@@ -74,13 +85,15 @@ class BertQAMatcher(nn.Module):
         :param sent_bert_inp: (bert_ids, segments, bert_masks)
         :return:
         '''
-        sent_embed = self.bert(*sent_bert_inp)
-        sent_repr = self.bert_norm(sent_embed)
+        bert_ids, segments, bert_masks = sent_bert_inp
+        sent_repr = self.bert(bert_ids, segments, bert_masks)
+        # sent_repr = self.bert_norm(self.bert(*sent_bert_inp))
         if self.training:
             sent_repr = F.dropout(sent_repr, p=self.dropout, training=self.training)
-        sent_vec = self.pooling(sent_repr)  # (B, D)
+        sent_vec = self.pooling(sent_repr, bert_masks)  # (B, D)
+        # sent_vec = self.attn_pooling(sent_repr, bert_masks)
         return sent_vec
-
+    
     def get_cos_sim(self, query, doc):
         query_vec = self.get_repr(query)  # (B, D)
         doc_vec = self.get_repr(doc)  # (B, D)
